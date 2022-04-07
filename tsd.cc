@@ -108,17 +108,17 @@ class SNSServiceImpl final : public SNSService::Service {
     std::string username2 = request->arguments(0);
     int join_index = find_user(username2);
     if(join_index < 0 || username1 == username2)
-      reply->set_msg("Join Failed -- Invalid Username");
+      reply->set_msg("unkown user name");
     else{
       Client *user1 = &client_db[find_user(username1)];
       Client *user2 = &client_db[join_index];
       if(std::find(user1->client_following.begin(), user1->client_following.end(), user2) != user1->client_following.end()){
-	reply->set_msg("Join Failed -- Already Following User");
+	reply->set_msg("you have already joined");
         return Status::OK;
       }
       user1->client_following.push_back(user2);
       user2->client_followers.push_back(user1);
-      reply->set_msg("Join Successful");
+      reply->set_msg("Follow Successful");
     }
     return Status::OK; 
   }
@@ -128,17 +128,17 @@ class SNSServiceImpl final : public SNSService::Service {
     std::string username2 = request->arguments(0);
     int leave_index = find_user(username2);
     if(leave_index < 0 || username1 == username2)
-      reply->set_msg("Leave Failed -- Invalid Username");
+      reply->set_msg("unknown follower username");
     else{
       Client *user1 = &client_db[find_user(username1)];
       Client *user2 = &client_db[leave_index];
       if(std::find(user1->client_following.begin(), user1->client_following.end(), user2) == user1->client_following.end()){
-	reply->set_msg("Leave Failed -- Not Following User");
+	reply->set_msg("you are not follower");
         return Status::OK;
       }
       user1->client_following.erase(find(user1->client_following.begin(), user1->client_following.end(), user2)); 
       user2->client_followers.erase(find(user2->client_followers.begin(), user2->client_followers.end(), user1));
-      reply->set_msg("Leave Successful");
+      reply->set_msg("UnFollow Successful");
     }
     return Status::OK;
   }

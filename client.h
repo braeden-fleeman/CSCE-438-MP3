@@ -60,7 +60,9 @@ class IClient
         virtual void processTimeline() = 0;
 
     private:
+
         void run();
+
         void displayTitle() const;
         std::string getCommand() const;
         void displayCommandReply(const std::string& comm, const IReply& reply) const;
@@ -194,7 +196,7 @@ void displayPostMessage(const std::string& sender, const std::string& message, s
 {
     std::string t_str(std::ctime(&time));
     t_str[t_str.size()-1] = '\0';
-    std::cout << sender << " (" << t_str << ") >> " << message << std::endl;
+    std::cout << sender << "(" << t_str << ") >> " << message << std::endl;
 }
 
 void displayReConnectionMessage(const std::string& host, const std::string & port) {
