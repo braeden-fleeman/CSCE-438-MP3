@@ -88,6 +88,19 @@ int find_user(std::string username){
   return -1;
 }
 
+// TODO: Heartbeat function
+//    -- Use a while loop and sleep(10) for this
+int heartbeat() {
+  while(true){
+    sleep(10);
+    // Send message to coordinator
+  }
+  return 0;
+}
+// TODO: Record type of server somewhere and have ability to change it
+// TODO: Slave/Master Communication
+// TODO: Update files
+
 class SNSServiceImpl final : public SNSService::Service {
   
   Status List(ServerContext* context, const Request* request, ListReply* list_reply) override {
@@ -249,6 +262,7 @@ int main(int argc, char** argv) {
   
   std::string port = "3010";
   int opt = 0;
+  // TODO: Update to have coordinatorIP, coordinatorPort, serverPort, Id, and type
   while ((opt = getopt(argc, argv, "p:")) != -1){
     switch(opt) {
       case 'p':
@@ -257,6 +271,7 @@ int main(int argc, char** argv) {
 	  std::cerr << "Invalid Command Line Argument\n";
     }
   }
+  // Thread or child process for heartbeat?
   RunServer(port);
 
   return 0;

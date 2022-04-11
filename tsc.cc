@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
     std::string username = "default";
     std::string port = "3010";
     int opt = 0;
+    // TODO: Update to have coordinatorIP, coordinatorPort, and ID
     while ((opt = getopt(argc, argv, "h:u:p:")) != -1){
         switch(opt) {
             case 'h':
@@ -86,6 +87,8 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+// TODO: Create function to get port from coordinator
+
 int Client::connectTo()
 {
 	// ------------------------------------------------------------
@@ -97,6 +100,7 @@ int Client::connectTo()
     // a member variable in your own Client class.
     // Please refer to gRpc tutorial how to create a stub.
 	// ------------------------------------------------------------
+    // TODO: Get port from Coordinator
     std::string login_info = hostname + ":" + port;
     stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
                grpc::CreateChannel(
