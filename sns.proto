@@ -66,3 +66,8 @@ message Message {
   //Time the message was sent
   google.protobuf.Timestamp timestamp = 3;
 }
+
+// Coordinator service
+service Coordinator_Service {
+  rpc HeartBeat (Message) returns (Reply) {}
+}

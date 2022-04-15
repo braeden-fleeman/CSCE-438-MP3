@@ -61,6 +61,7 @@ using csce438::ListReply;
 using csce438::Request;
 using csce438::Reply;
 using csce438::SNSService;
+using csce438::Coordinator_Service;
 
 struct Client {
   std::string username;
@@ -89,14 +90,14 @@ int find_user(std::string username){
 }
 
 // TODO: Heartbeat function
-//    -- Use a while loop and sleep(10) for this
-int heartbeat() {
+void heartbeat_handler() {
   while(true){
     sleep(10);
-    // Send message to coordinator
+    // Contact servers every ten seconds (Call heartbeat function)
   }
-  return 0;
 }
+
+
 // TODO: Record type of server somewhere and have ability to change it
 // TODO: Slave/Master Communication
 // TODO: Update files
@@ -171,7 +172,7 @@ class SNSServiceImpl final : public SNSService::Service {
         reply->set_msg("Invalid Username");
       else{
         std::string msg = "Welcome Back " + user->username;
-	reply->set_msg(msg);
+	      reply->set_msg(msg);
         user->connected = true;
       }
     }
