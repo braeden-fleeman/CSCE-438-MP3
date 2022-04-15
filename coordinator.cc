@@ -46,10 +46,13 @@ std::vector<Server_Entry> synchronizer_table;
 std::map<std::string, google::protobuf::Timestamp> last_heartbeats;
 
 // TODO: Main function
+int main(int argc, char** argv) {
+    return 0;
+}
 // TODO: Anything else heres
 
 class CoordServiceImpl final : public Coordinator_Service::Service {
-    Status HeartBeat(ServerContext* context, Message* request, Reply* response) override {
+    Status HeartBeat(ServerContext* context, const Message* request, Reply* response) override {
         // Get Info from server
         std::string msg = request->msg();
         google::protobuf::Timestamp temptime = request->timestamp();
