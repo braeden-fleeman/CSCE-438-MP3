@@ -45,10 +45,11 @@ std::vector<Server_Entry> slave_table;
 std::vector<Server_Entry> synchronizer_table;
 std::map<std::string, google::protobuf::Timestamp> last_heartbeats;
 
-// TODO: Main function
-int main(int argc, char** argv) {
-    return 0;
-}
+
+int getServer(int client_id);
+void check_heartbeats();
+
+
 // TODO: Anything else heres
 
 class CoordServiceImpl final : public Coordinator_Service::Service {
@@ -56,10 +57,12 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
         // Get Info from server
         std::string msg = request->msg();
         google::protobuf::Timestamp temptime = request->timestamp();
+        // username = server_id
         std::string username = request->username();
 
         // Store time
         if (last_heartbeats.find(username) == last_heartbeats.end()) {
+            // Setup server
             last_heartbeats.insert({ username, temptime });
         }
         else {
@@ -68,14 +71,34 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
         }
         return Status::OK;
     }
+
+    Status HandleClient(ServerContext* context, const Request* request, Reply* reply) override {
+        std::string username = request->username();
+
+        try {
+            int userID = stoi(username);
+            int server_port = getServer(userID);
+            reply->set_msg(std::to_string(server_port));
+
+        }
+        catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+            Status stat = Status(grpc::StatusCode::UNKNOWN, "Failure in HandleClient");
+            return stat;
+        }
+
+        return Status::OK;
+    }
+
 };
 
+// Returns port of server 
 int getServer(int client_id) {
     int serverID = (client_id % 3) + 1;
     if (master_table.at(serverID).isActive) {
         return master_table.at(serverID).port;
     }
-
+    // Master is inactive. Route to slave from here on.
     return slave_table.at(serverID).port;
 }
 int getFollowerSyncer(int client_id) {
@@ -85,20 +108,69 @@ int getFollowerSyncer(int client_id) {
 
 // helper function
 void check_heartbeats() {
-    for (std::map<std::string, google::protobuf::Timestamp>::iterator it = last_heartbeats.begin(); it != last_heartbeats.end(); ++it) {
-        auto lastHB = google::protobuf::util::TimeUtil::TimestampToSeconds(it->second);
-        auto currentTime = google::protobuf::util::TimeUtil::TimestampToSeconds(google::protobuf::util::TimeUtil::GetCurrentTime());
-        if (currentTime - lastHB >= 20) {
-            // set server to inactive
-            int underscorePos = it->first.find("_");
-            std::string server_type = it->first.substr(0, underscorePos);
-            int serverIndex = stoi(it->first.substr(underscorePos + 1));
-            if (server_type == "master") {
-                master_table.at(serverIndex).isActive = false;
+    // Every 5 seconds, check table: if not valid timestamp then declare server dead
+    while (true) {
+        sleep(5);
+        for (std::map<std::string, google::protobuf::Timestamp>::iterator it = last_heartbeats.begin(); it != last_heartbeats.end(); ++it) {
+            auto lastHB = google::protobuf::util::TimeUtil::TimestampToSeconds(it->second);
+            auto currentTime = google::protobuf::util::TimeUtil::TimestampToSeconds(google::protobuf::util::TimeUtil::GetCurrentTime());
+            if (currentTime - lastHB >= 20) {
+                // set server to inactive
+                int underscorePos = it->first.find("_");
+                std::string server_type = it->first.substr(0, underscorePos);
+                int serverIndex = stoi(it->first.substr(underscorePos + 1));
+                if (server_type == "master") {
+                    master_table.at(serverIndex).isActive = false;
+                }
+                // else {
+                //     slave_table.at(serverIndex).isActive = false;
+                // }
             }
-            // else {
-            //     slave_table.at(serverIndex).isActive = false;
-            // }
         }
     }
+}
+
+
+/*
+DEFAULT PORTS:
+M1: 3010, S1: 3011
+M2: 3012, S2: 3013
+M3: 3014. S3: 3015
+
+C: 6009
+*/
+
+void RunServer(std::string port_no) {
+    std::string server_address = "0.0.0.0:" + port_no;
+    CoordServiceImpl service;
+
+    ServerBuilder builder;
+    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    builder.RegisterService(&service);
+    std::unique_ptr<Server> server(builder.BuildAndStart());
+    std::cout << "Coordinator listening on " << server_address << std::endl;
+
+    // Dispatch heartbeat handler
+    // thread heartbeat_handler(heartbeat);
+
+    server->Wait();
+}
+
+
+int main(int argc, char** argv) {
+
+    std::string port = "6009";
+    int opt = 0;
+    while ((opt = getopt(argc, argv, "p:")) != -1) {
+        switch (opt) {
+        case 'p':
+            port = optarg;break;
+        default:
+            std::cerr << "Invalid Command Line Argument\n";
+        }
+    }
+
+    RunServer(port);
+
+    return 0;
 }

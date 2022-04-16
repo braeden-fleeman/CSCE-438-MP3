@@ -70,4 +70,5 @@ message Message {
 // Coordinator service
 service Coordinator_Service {
   rpc HeartBeat (Message) returns (Reply) {}
+  rpc HandleClient (Request) returns (Reply) {}
 }
