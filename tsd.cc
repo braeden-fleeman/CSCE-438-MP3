@@ -93,14 +93,14 @@ int find_user(std::string username) {
   return -1;
 }
 
-// TODO: Heartbeat function
 void heartbeat_handler(std::string server_id, std::string server_type, std::string coord_ip, std::string coord_port, std::string port_no) {
-
+  // Connect to the coordinator
   std::string login_info = coord_ip + ":" + coord_port;
   auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
     grpc::CreateChannel(
       login_info, grpc::InsecureChannelCredentials())));
 
+  // Build message
   Message message;
   message.set_username(server_type + "_" + server_id);
   message.set_msg(port_no);
@@ -108,7 +108,6 @@ void heartbeat_handler(std::string server_id, std::string server_type, std::stri
   while (true) {
     Reply reply;
     ClientContext context;
-    // std::cout << "Sending heartbeat" << std::endl;
     // Contact coordinator every ten seconds (Call heartbeat function)
     Timestamp* ts = new Timestamp(time_util.GetCurrentTime());
     message.set_allocated_timestamp(ts);

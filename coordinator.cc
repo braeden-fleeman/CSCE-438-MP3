@@ -1,6 +1,8 @@
 #include <vector>
 #include <ctime>
 #include <chrono>
+#include <thread>
+
 
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/duration.pb.h>
@@ -169,7 +171,8 @@ void RunServer(std::string port_no) {
     std::cout << "Coordinator listening on " << server_address << std::endl;
 
     // Dispatch heartbeat handler
-    // thread heartbeat_handler(heartbeat);
+    std::thread heartbeat_check(check_heartbeats);
+    heartbeat_check.detach();
 
     server->Wait();
 }
