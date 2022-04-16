@@ -82,6 +82,13 @@ struct Client {
 //Vector that stores every client that has been created
 std::vector<Client> client_db;
 
+// Server Type & ID
+std::string server_type;
+std::string server_id;
+
+// Stub to slave
+std::unique_ptr<SNSService::Stub> stub_;
+
 //Helper function used to find a Client object given its username
 int find_user(std::string username) {
   int index = 0;
@@ -93,7 +100,7 @@ int find_user(std::string username) {
   return -1;
 }
 
-void heartbeat_handler(std::string server_id, std::string server_type, std::string coord_ip, std::string coord_port, std::string port_no) {
+void heartbeat_handler(std::string coord_ip, std::string coord_port, std::string port_no) {
   // Connect to the coordinator
   std::string login_info = coord_ip + ":" + coord_port;
   auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
@@ -135,6 +142,7 @@ class SNSServiceImpl final : public SNSService::Service {
     return Status::OK;
   }
 
+  // TODO: Update follow to store list of followers in a file
   Status Follow(ServerContext* context, const Request* request, Reply* reply) override {
     std::string username1 = request->username();
     std::string username2 = request->arguments(0);
@@ -151,6 +159,13 @@ class SNSServiceImpl final : public SNSService::Service {
       user1->client_following.push_back(user2);
       user2->client_followers.push_back(user1);
       reply->set_msg("Follow Successful");
+    }
+
+    if (server_type == "master") {
+      // TODO: Make new request object (?)
+      ClientContext m_context;
+      Reply m_reply;
+      stub_->Follow(&m_context, *request, &m_reply);
     }
     return Status::OK;
   }
@@ -259,12 +274,15 @@ class SNSServiceImpl final : public SNSService::Service {
     }
     //If the client disconnected from Chat Mode, set connected to false
     c->connected = false;
+    if (server_type == "master") {
+
+    }
     return Status::OK;
   }
 };
 
 
-void RunServer(std::string port_no, std::string server_id, std::string server_type, std::string coord_ip, std::string coord_port) {
+void RunServer(std::string port_no, std::string coord_ip, std::string coord_port) {
 
   std::string server_address = "0.0.0.0:" + port_no;
   SNSServiceImpl service;
@@ -275,7 +293,7 @@ void RunServer(std::string port_no, std::string server_id, std::string server_ty
   std::unique_ptr<Server> server(builder.BuildAndStart());
 
   // Dispatch thread to message coordinator with heartbeats
-  std::thread server_heartbeat(heartbeat_handler, server_id, server_type, coord_ip, coord_port, port_no);
+  std::thread server_heartbeat(heartbeat_handler, coord_ip, coord_port, port_no);
   server_heartbeat.detach();
 
   std::cout << "Server listening on " << server_address << std::endl;
@@ -288,8 +306,8 @@ int main(int argc, char** argv) {
   std::string coord_ip = "0.0.0.0";
   std::string coord_port = "6009";
   std::string server_port = "3010";
-  std::string server_id = "-1";
-  std::string server_type = "master";
+  server_id = "-1";
+  server_type = "master";
 
   int opt = 0;
   while ((opt = getopt(argc, argv, "h:p:s:u:t:")) != -1) {
@@ -313,8 +331,29 @@ int main(int argc, char** argv) {
       std::cerr << "Invalid Command Line Argument\n";
     }
   }
-  // Thread or child process for heartbeat?
-  RunServer(server_port, server_id, server_type, coord_ip, coord_port);
+
+  if (server_type == "master") {
+    // Get Slave port
+    std::string login_info = coord_ip + ":" + coord_port;
+    auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+      grpc::CreateChannel(
+        login_info, grpc::InsecureChannelCredentials())));
+
+    Request request;
+    request.set_username(server_id);
+
+    Reply reply;
+    ClientContext context;
+    coord_stub->HandleSlave(&context, request, &reply);
+
+    // Connect to slave
+    login_info = coord_ip + ":" + reply.msg();
+    stub_ = std::unique_ptr<SNSService::Stub>(SNSService::NewStub(
+      grpc::CreateChannel(
+        login_info, grpc::InsecureChannelCredentials())));
+  }
+
+  RunServer(server_port, coord_ip, coord_port);
 
   return 0;
 }

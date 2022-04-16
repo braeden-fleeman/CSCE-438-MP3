@@ -893,6 +893,13 @@ class Coordinator_Service final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>> PrepareAsyncHandleClient(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>>(PrepareAsyncHandleClientRaw(context, request, cq));
     }
+    virtual ::grpc::Status HandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::csce438::Reply* response) = 0;
+    std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>> AsyncHandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>>(AsyncHandleSlaveRaw(context, request, cq));
+    }
+    std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>> PrepareAsyncHandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>>(PrepareAsyncHandleSlaveRaw(context, request, cq));
+    }
     class async_interface {
      public:
       virtual ~async_interface() {}
@@ -900,6 +907,8 @@ class Coordinator_Service final {
       virtual void HeartBeat(::grpc::ClientContext* context, const ::csce438::Message* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) = 0;
       virtual void HandleClient(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, std::function<void(::grpc::Status)>) = 0;
       virtual void HandleClient(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) = 0;
+      virtual void HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, std::function<void(::grpc::Status)>) = 0;
+      virtual void HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) = 0;
     };
     typedef class async_interface experimental_async_interface;
     virtual class async_interface* async() { return nullptr; }
@@ -909,6 +918,8 @@ class Coordinator_Service final {
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>* PrepareAsyncHeartBeatRaw(::grpc::ClientContext* context, const ::csce438::Message& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>* AsyncHandleClientRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>* PrepareAsyncHandleClientRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) = 0;
+    virtual ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>* AsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) = 0;
+    virtual ::grpc::ClientAsyncResponseReaderInterface< ::csce438::Reply>* PrepareAsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) = 0;
   };
   class Stub final : public StubInterface {
    public:
@@ -927,6 +938,13 @@ class Coordinator_Service final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>> PrepareAsyncHandleClient(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>>(PrepareAsyncHandleClientRaw(context, request, cq));
     }
+    ::grpc::Status HandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::csce438::Reply* response) override;
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>> AsyncHandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>>(AsyncHandleSlaveRaw(context, request, cq));
+    }
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>> PrepareAsyncHandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::csce438::Reply>>(PrepareAsyncHandleSlaveRaw(context, request, cq));
+    }
     class async final :
       public StubInterface::async_interface {
      public:
@@ -934,6 +952,8 @@ class Coordinator_Service final {
       void HeartBeat(::grpc::ClientContext* context, const ::csce438::Message* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) override;
       void HandleClient(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, std::function<void(::grpc::Status)>) override;
       void HandleClient(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) override;
+      void HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, std::function<void(::grpc::Status)>) override;
+      void HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) override;
      private:
       friend class Stub;
       explicit async(Stub* stub): stub_(stub) { }
@@ -949,8 +969,11 @@ class Coordinator_Service final {
     ::grpc::ClientAsyncResponseReader< ::csce438::Reply>* PrepareAsyncHeartBeatRaw(::grpc::ClientContext* context, const ::csce438::Message& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::csce438::Reply>* AsyncHandleClientRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::csce438::Reply>* PrepareAsyncHandleClientRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) override;
+    ::grpc::ClientAsyncResponseReader< ::csce438::Reply>* AsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) override;
+    ::grpc::ClientAsyncResponseReader< ::csce438::Reply>* PrepareAsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) override;
     const ::grpc::internal::RpcMethod rpcmethod_HeartBeat_;
     const ::grpc::internal::RpcMethod rpcmethod_HandleClient_;
+    const ::grpc::internal::RpcMethod rpcmethod_HandleSlave_;
   };
   static std::unique_ptr<Stub> NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options = ::grpc::StubOptions());
 
@@ -960,6 +983,7 @@ class Coordinator_Service final {
     virtual ~Service();
     virtual ::grpc::Status HeartBeat(::grpc::ServerContext* context, const ::csce438::Message* request, ::csce438::Reply* response);
     virtual ::grpc::Status HandleClient(::grpc::ServerContext* context, const ::csce438::Request* request, ::csce438::Reply* response);
+    virtual ::grpc::Status HandleSlave(::grpc::ServerContext* context, const ::csce438::Request* request, ::csce438::Reply* response);
   };
   template <class BaseClass>
   class WithAsyncMethod_HeartBeat : public BaseClass {
@@ -1001,7 +1025,27 @@ class Coordinator_Service final {
       ::grpc::Service::RequestAsyncUnary(1, context, request, response, new_call_cq, notification_cq, tag);
     }
   };
-  typedef WithAsyncMethod_HeartBeat<WithAsyncMethod_HandleClient<Service > > AsyncService;
+  template <class BaseClass>
+  class WithAsyncMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithAsyncMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodAsync(2);
+    }
+    ~WithAsyncMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    void RequestHandleSlave(::grpc::ServerContext* context, ::csce438::Request* request, ::grpc::ServerAsyncResponseWriter< ::csce438::Reply>* response, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
+      ::grpc::Service::RequestAsyncUnary(2, context, request, response, new_call_cq, notification_cq, tag);
+    }
+  };
+  typedef WithAsyncMethod_HeartBeat<WithAsyncMethod_HandleClient<WithAsyncMethod_HandleSlave<Service > > > AsyncService;
   template <class BaseClass>
   class WithCallbackMethod_HeartBeat : public BaseClass {
    private:
@@ -1056,7 +1100,34 @@ class Coordinator_Service final {
     virtual ::grpc::ServerUnaryReactor* HandleClient(
       ::grpc::CallbackServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/)  { return nullptr; }
   };
-  typedef WithCallbackMethod_HeartBeat<WithCallbackMethod_HandleClient<Service > > CallbackService;
+  template <class BaseClass>
+  class WithCallbackMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithCallbackMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodCallback(2,
+          new ::grpc::internal::CallbackUnaryHandler< ::csce438::Request, ::csce438::Reply>(
+            [this](
+                   ::grpc::CallbackServerContext* context, const ::csce438::Request* request, ::csce438::Reply* response) { return this->HandleSlave(context, request, response); }));}
+    void SetMessageAllocatorFor_HandleSlave(
+        ::grpc::MessageAllocator< ::csce438::Request, ::csce438::Reply>* allocator) {
+      ::grpc::internal::MethodHandler* const handler = ::grpc::Service::GetHandler(2);
+      static_cast<::grpc::internal::CallbackUnaryHandler< ::csce438::Request, ::csce438::Reply>*>(handler)
+              ->SetMessageAllocator(allocator);
+    }
+    ~WithCallbackMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    virtual ::grpc::ServerUnaryReactor* HandleSlave(
+      ::grpc::CallbackServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/)  { return nullptr; }
+  };
+  typedef WithCallbackMethod_HeartBeat<WithCallbackMethod_HandleClient<WithCallbackMethod_HandleSlave<Service > > > CallbackService;
   typedef CallbackService ExperimentalCallbackService;
   template <class BaseClass>
   class WithGenericMethod_HeartBeat : public BaseClass {
@@ -1088,6 +1159,23 @@ class Coordinator_Service final {
     }
     // disable synchronous version of this method
     ::grpc::Status HandleClient(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+  };
+  template <class BaseClass>
+  class WithGenericMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithGenericMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodGeneric(2);
+    }
+    ~WithGenericMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
@@ -1133,6 +1221,26 @@ class Coordinator_Service final {
     }
   };
   template <class BaseClass>
+  class WithRawMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithRawMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodRaw(2);
+    }
+    ~WithRawMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    void RequestHandleSlave(::grpc::ServerContext* context, ::grpc::ByteBuffer* request, ::grpc::ServerAsyncResponseWriter< ::grpc::ByteBuffer>* response, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
+      ::grpc::Service::RequestAsyncUnary(2, context, request, response, new_call_cq, notification_cq, tag);
+    }
+  };
+  template <class BaseClass>
   class WithRawCallbackMethod_HeartBeat : public BaseClass {
    private:
     void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
@@ -1174,6 +1282,28 @@ class Coordinator_Service final {
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
     virtual ::grpc::ServerUnaryReactor* HandleClient(
+      ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
+  };
+  template <class BaseClass>
+  class WithRawCallbackMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithRawCallbackMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodRawCallback(2,
+          new ::grpc::internal::CallbackUnaryHandler< ::grpc::ByteBuffer, ::grpc::ByteBuffer>(
+            [this](
+                   ::grpc::CallbackServerContext* context, const ::grpc::ByteBuffer* request, ::grpc::ByteBuffer* response) { return this->HandleSlave(context, request, response); }));
+    }
+    ~WithRawCallbackMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    virtual ::grpc::ServerUnaryReactor* HandleSlave(
       ::grpc::CallbackServerContext* /*context*/, const ::grpc::ByteBuffer* /*request*/, ::grpc::ByteBuffer* /*response*/)  { return nullptr; }
   };
   template <class BaseClass>
@@ -1230,9 +1360,36 @@ class Coordinator_Service final {
     // replace default version of method with streamed unary
     virtual ::grpc::Status StreamedHandleClient(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::csce438::Request,::csce438::Reply>* server_unary_streamer) = 0;
   };
-  typedef WithStreamedUnaryMethod_HeartBeat<WithStreamedUnaryMethod_HandleClient<Service > > StreamedUnaryService;
+  template <class BaseClass>
+  class WithStreamedUnaryMethod_HandleSlave : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service* /*service*/) {}
+   public:
+    WithStreamedUnaryMethod_HandleSlave() {
+      ::grpc::Service::MarkMethodStreamed(2,
+        new ::grpc::internal::StreamedUnaryHandler<
+          ::csce438::Request, ::csce438::Reply>(
+            [this](::grpc::ServerContext* context,
+                   ::grpc::ServerUnaryStreamer<
+                     ::csce438::Request, ::csce438::Reply>* streamer) {
+                       return this->StreamedHandleSlave(context,
+                         streamer);
+                  }));
+    }
+    ~WithStreamedUnaryMethod_HandleSlave() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable regular version of this method
+    ::grpc::Status HandleSlave(::grpc::ServerContext* /*context*/, const ::csce438::Request* /*request*/, ::csce438::Reply* /*response*/) override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    // replace default version of method with streamed unary
+    virtual ::grpc::Status StreamedHandleSlave(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::csce438::Request,::csce438::Reply>* server_unary_streamer) = 0;
+  };
+  typedef WithStreamedUnaryMethod_HeartBeat<WithStreamedUnaryMethod_HandleClient<WithStreamedUnaryMethod_HandleSlave<Service > > > StreamedUnaryService;
   typedef Service SplitStreamedService;
-  typedef WithStreamedUnaryMethod_HeartBeat<WithStreamedUnaryMethod_HandleClient<Service > > StreamedService;
+  typedef WithStreamedUnaryMethod_HeartBeat<WithStreamedUnaryMethod_HandleClient<WithStreamedUnaryMethod_HandleSlave<Service > > > StreamedService;
 };
 
 }  // namespace csce438

@@ -245,6 +245,7 @@ SNSService::Service::~Service() {
 static const char* Coordinator_Service_method_names[] = {
   "/csce438.Coordinator_Service/HeartBeat",
   "/csce438.Coordinator_Service/HandleClient",
+  "/csce438.Coordinator_Service/HandleSlave",
 };
 
 std::unique_ptr< Coordinator_Service::Stub> Coordinator_Service::NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options) {
@@ -256,6 +257,7 @@ std::unique_ptr< Coordinator_Service::Stub> Coordinator_Service::NewStub(const s
 Coordinator_Service::Stub::Stub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options)
   : channel_(channel), rpcmethod_HeartBeat_(Coordinator_Service_method_names[0], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   , rpcmethod_HandleClient_(Coordinator_Service_method_names[1], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_HandleSlave_(Coordinator_Service_method_names[2], options.suffix_for_stats(),::grpc::internal::RpcMethod::NORMAL_RPC, channel)
   {}
 
 ::grpc::Status Coordinator_Service::Stub::HeartBeat(::grpc::ClientContext* context, const ::csce438::Message& request, ::csce438::Reply* response) {
@@ -304,6 +306,29 @@ void Coordinator_Service::Stub::async::HandleClient(::grpc::ClientContext* conte
   return result;
 }
 
+::grpc::Status Coordinator_Service::Stub::HandleSlave(::grpc::ClientContext* context, const ::csce438::Request& request, ::csce438::Reply* response) {
+  return ::grpc::internal::BlockingUnaryCall< ::csce438::Request, ::csce438::Reply, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), rpcmethod_HandleSlave_, context, request, response);
+}
+
+void Coordinator_Service::Stub::async::HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, std::function<void(::grpc::Status)> f) {
+  ::grpc::internal::CallbackUnaryCall< ::csce438::Request, ::csce438::Reply, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_HandleSlave_, context, request, response, std::move(f));
+}
+
+void Coordinator_Service::Stub::async::HandleSlave(::grpc::ClientContext* context, const ::csce438::Request* request, ::csce438::Reply* response, ::grpc::ClientUnaryReactor* reactor) {
+  ::grpc::internal::ClientCallbackUnaryFactory::Create< ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(stub_->channel_.get(), stub_->rpcmethod_HandleSlave_, context, request, response, reactor);
+}
+
+::grpc::ClientAsyncResponseReader< ::csce438::Reply>* Coordinator_Service::Stub::PrepareAsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+  return ::grpc::internal::ClientAsyncResponseReaderHelper::Create< ::csce438::Reply, ::csce438::Request, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(channel_.get(), cq, rpcmethod_HandleSlave_, context, request);
+}
+
+::grpc::ClientAsyncResponseReader< ::csce438::Reply>* Coordinator_Service::Stub::AsyncHandleSlaveRaw(::grpc::ClientContext* context, const ::csce438::Request& request, ::grpc::CompletionQueue* cq) {
+  auto* result =
+    this->PrepareAsyncHandleSlaveRaw(context, request, cq);
+  result->StartCall();
+  return result;
+}
+
 Coordinator_Service::Service::Service() {
   AddMethod(new ::grpc::internal::RpcServiceMethod(
       Coordinator_Service_method_names[0],
@@ -325,6 +350,16 @@ Coordinator_Service::Service::Service() {
              ::csce438::Reply* resp) {
                return service->HandleClient(ctx, req, resp);
              }, this)));
+  AddMethod(new ::grpc::internal::RpcServiceMethod(
+      Coordinator_Service_method_names[2],
+      ::grpc::internal::RpcMethod::NORMAL_RPC,
+      new ::grpc::internal::RpcMethodHandler< Coordinator_Service::Service, ::csce438::Request, ::csce438::Reply, ::grpc::protobuf::MessageLite, ::grpc::protobuf::MessageLite>(
+          [](Coordinator_Service::Service* service,
+             ::grpc::ServerContext* ctx,
+             const ::csce438::Request* req,
+             ::csce438::Reply* resp) {
+               return service->HandleSlave(ctx, req, resp);
+             }, this)));
 }
 
 Coordinator_Service::Service::~Service() {
@@ -338,6 +373,13 @@ Coordinator_Service::Service::~Service() {
 }
 
 ::grpc::Status Coordinator_Service::Service::HandleClient(::grpc::ServerContext* context, const ::csce438::Request* request, ::csce438::Reply* response) {
+  (void) context;
+  (void) request;
+  (void) response;
+  return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+}
+
+::grpc::Status Coordinator_Service::Service::HandleSlave(::grpc::ServerContext* context, const ::csce438::Request* request, ::csce438::Reply* response) {
   (void) context;
   (void) request;
   (void) response;
