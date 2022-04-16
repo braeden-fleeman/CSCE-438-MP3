@@ -36,13 +36,13 @@ using grpc::Status;
 struct Server_Entry
 {
     int server_ID = -1;
-    int port = -1;
+    std::string port = "";
     bool isActive = false;
 };
 
-std::vector<Server_Entry> master_table;
-std::vector<Server_Entry> slave_table;
-std::vector<Server_Entry> synchronizer_table;
+std::map<int, Server_Entry> master_table;
+std::map<int, Server_Entry> slave_table;
+std::map<int, Server_Entry> synchronizer_table;
 std::map<std::string, google::protobuf::Timestamp> last_heartbeats;
 
 
@@ -62,8 +62,24 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
 
         // Store time
         if (last_heartbeats.find(username) == last_heartbeats.end()) {
-            // Setup server
+            std::cout << "creating table for port: " << request->msg() << std::endl;
+            // Put server in heartbeat table
             last_heartbeats.insert({ username, temptime });
+
+            // Build the server
+            Server_Entry server;
+            int underscorePos = request->username().find("_");
+            std::string server_type = request->username().substr(0, underscorePos);
+            int serverIndex = stoi(request->username().substr(underscorePos + 1));
+            server.isActive = true;
+            server.server_ID = serverIndex;
+            server.port = request->msg();
+            if (server_type == "master") {
+                master_table.insert({ serverIndex, server });
+            }
+            else {
+                slave_table.insert({ serverIndex, server });
+            }
         }
         else {
             // Add timestamp check
@@ -94,16 +110,18 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
 
 // Returns port of server 
 int getServer(int client_id) {
-    int serverID = (client_id % 3) + 1;
+    int serverID = (client_id % 3);
     if (master_table.at(serverID).isActive) {
-        return master_table.at(serverID).port;
+        std::cout << "master table" << std::endl;
+        return stoi(master_table.at(serverID).port);
     }
     // Master is inactive. Route to slave from here on.
-    return slave_table.at(serverID).port;
+    std::cout << "slave table" << std::endl;
+    return stoi(slave_table.at(serverID).port);
 }
 int getFollowerSyncer(int client_id) {
     int serverID = (client_id % 3) + 1;
-    return synchronizer_table.at(serverID).port;
+    return stoi(synchronizer_table.at(serverID).port);
 }
 
 // helper function

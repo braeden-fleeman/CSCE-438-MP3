@@ -51,6 +51,7 @@
 
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
+using google::protobuf::util::TimeUtil;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -93,7 +94,7 @@ int find_user(std::string username) {
 }
 
 // TODO: Heartbeat function
-void heartbeat_handler(std::string server_id, std::string server_type, std::string coord_ip, std::string coord_port) {
+void heartbeat_handler(std::string server_id, std::string server_type, std::string coord_ip, std::string coord_port, std::string port_no) {
 
   std::string login_info = coord_ip + ":" + coord_port;
   auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
@@ -102,19 +103,21 @@ void heartbeat_handler(std::string server_id, std::string server_type, std::stri
 
   Message message;
   message.set_username(server_type + "_" + server_id);
-  Reply reply;
-  ClientContext context;
-
+  message.set_msg(port_no);
+  TimeUtil time_util;
   while (true) {
-    sleep(10);
+    Reply reply;
+    ClientContext context;
+    // std::cout << "Sending heartbeat" << std::endl;
     // Contact coordinator every ten seconds (Call heartbeat function)
-    message.set_allocated_timestamp(&google::protobuf::util::TimeUtil::GetCurrentTime());
+    Timestamp* ts = new Timestamp(time_util.GetCurrentTime());
+    message.set_allocated_timestamp(ts);
     Status status = coord_stub->HeartBeat(&context, message, &reply);
+    sleep(10);
   }
 }
 
 
-// TODO: Record type of server somewhere and have ability to change it
 // TODO: Slave/Master Communication
 // TODO: Update files
 
@@ -273,7 +276,7 @@ void RunServer(std::string port_no, std::string server_id, std::string server_ty
   std::unique_ptr<Server> server(builder.BuildAndStart());
 
   // Dispatch thread to message coordinator with heartbeats
-  std::thread server_heartbeat(heartbeat_handler, server_id, server_type, coord_ip, coord_port);
+  std::thread server_heartbeat(heartbeat_handler, server_id, server_type, coord_ip, coord_port, port_no);
   server_heartbeat.detach();
 
   std::cout << "Server listening on " << server_address << std::endl;
@@ -290,7 +293,6 @@ int main(int argc, char** argv) {
   std::string server_type = "master";
 
   int opt = 0;
-  // TODO: Update to have coordinatorIP, coordinatorPort, serverPort, Id, and type
   while ((opt = getopt(argc, argv, "h:p:s:u:t:")) != -1) {
     switch (opt) {
     case 'h':
@@ -313,7 +315,7 @@ int main(int argc, char** argv) {
     }
   }
   // Thread or child process for heartbeat?
-  RunServer(server_port);
+  RunServer(server_port, server_id, server_type, coord_ip, coord_port);
 
   return 0;
 }

@@ -68,7 +68,6 @@ int main(int argc, char** argv) {
     std::string username = "default";
     std::string port = "6009";
     int opt = 0;
-    // TODO: Update to have coordinatorIP, coordinatorPort, and ID
     while ((opt = getopt(argc, argv, "h:u:p:")) != -1) {
         switch (opt) {
         case 'h':

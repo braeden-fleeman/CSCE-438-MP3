@@ -1,0 +1,3 @@
+./coordinator -p 6009
+./tsd -h localhost -p 6009 -s 9000 -u 1 -t master
+./tsc -h localhost -u 1 -p 6009
