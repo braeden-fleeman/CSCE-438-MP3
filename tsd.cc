@@ -162,8 +162,6 @@ class SNSServiceImpl final : public SNSService::Service {
       user2->client_followers.push_back(user1);
       reply->set_msg("Follow Successful");
 
-      // Add follower to file
-
     }
 
     if (server_type == "master") {
@@ -205,12 +203,16 @@ class SNSServiceImpl final : public SNSService::Service {
     if (user_index < 0) {
       c.username = username;
       client_db.push_back(c);
+      c.connected = true;
       reply->set_msg("Login Successful!");
     }
     else {
       Client* user = &client_db[user_index];
-      if (user->connected)
+      if (user->connected) {
         reply->set_msg("Invalid Username");
+        Status stat = Status(grpc::StatusCode::UNKNOWN, "Invalid Username");
+        return stat;
+      }
       else {
         std::string msg = "Welcome Back " + user->username;
         reply->set_msg(msg);

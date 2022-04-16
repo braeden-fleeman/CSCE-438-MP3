@@ -89,8 +89,6 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-// TODO: Create function to get port from coordinator
-
 int Client::connectTo()
 {
     // ------------------------------------------------------------
