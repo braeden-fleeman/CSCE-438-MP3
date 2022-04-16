@@ -34,6 +34,8 @@
 #include <ctime>
 
 #include <thread>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/duration.pb.h>
@@ -159,17 +161,23 @@ class SNSServiceImpl final : public SNSService::Service {
       user1->client_following.push_back(user2);
       user2->client_followers.push_back(user1);
       reply->set_msg("Follow Successful");
+
+      // Add follower to file
+
     }
 
     if (server_type == "master") {
-      // TODO: Make new request object (?)
+      Request m_request;
+      m_request.set_username(username1);
+      m_request.add_arguments(username2);
       ClientContext m_context;
       Reply m_reply;
-      stub_->Follow(&m_context, *request, &m_reply);
+      stub_->Follow(&m_context, m_request, &m_reply);
     }
     return Status::OK;
   }
 
+  // Deprecated Usage
   Status UnFollow(ServerContext* context, const Request* request, Reply* reply) override {
     std::string username1 = request->username();
     std::string username2 = request->arguments(0);
@@ -222,7 +230,7 @@ class SNSServiceImpl final : public SNSService::Service {
       c = &client_db[user_index];
 
       //Write the current message to "username.txt"
-      std::string filename = username + ".txt";
+      std::string filename = "/" + server_type + "_" + server_id + "/" + username + ".txt";
       std::ofstream user_file(filename, std::ios::app | std::ios::out | std::ios::in);
       google::protobuf::Timestamp temptime = message.timestamp();
       std::string time = google::protobuf::util::TimeUtil::ToString(temptime);
@@ -236,7 +244,7 @@ class SNSServiceImpl final : public SNSService::Service {
           c->stream = stream;
         std::string line;
         std::vector<std::string> newest_twenty;
-        std::ifstream in(username + "following.txt");
+        std::ifstream in("/" + server_type + "_" + server_id + "/" + username + "following.txt");
         int count = 0;
         //Read the last up-to-20 lines (newest 20 messages) from userfollowing.txt
         while (getline(in, line)) {
@@ -264,11 +272,11 @@ class SNSServiceImpl final : public SNSService::Service {
           temp_client->stream->Write(message);
         //For each of the current user's followers, put the message in their following.txt file
         std::string temp_username = temp_client->username;
-        std::string temp_file = temp_username + "following.txt";
+        std::string temp_file = "/" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
         std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
         following_file << fileinput;
         temp_client->following_file_size++;
-        std::ofstream user_file(temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
+        std::ofstream user_file("/" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
         user_file << fileinput;
       }
     }
@@ -352,6 +360,8 @@ int main(int argc, char** argv) {
       grpc::CreateChannel(
         login_info, grpc::InsecureChannelCredentials())));
   }
+  std::string path = server_type + "_" + server_id;
+  int check = mkdir(path.c_str(), 0777);
 
   RunServer(server_port, coord_ip, coord_port);
 
