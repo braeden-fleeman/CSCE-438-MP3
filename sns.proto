@@ -42,6 +42,9 @@ service SNSService{
   rpc UnFollow (Request) returns (Reply) {}
   // Bidirectional streaming RPC
   rpc Timeline (stream Message) returns (stream Message) {} 
+
+  // Server Helper Function
+  rpc ServerUpdate(Update) returns (Reply);
 }
 
 message ListReply {
@@ -65,6 +68,12 @@ message Message {
   string msg = 2;
   //Time the message was sent
   google.protobuf.Timestamp timestamp = 3;
+}
+
+message Update {
+  string username = 1;
+  string msg = 2;
+  string type = 3;
 }
 
 // Coordinator service

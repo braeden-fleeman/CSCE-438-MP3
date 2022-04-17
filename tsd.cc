@@ -66,6 +66,7 @@ using csce438::Message;
 using csce438::ListReply;
 using csce438::Request;
 using csce438::Reply;
+using csce438::Update;
 using csce438::SNSService;
 using csce438::Coordinator_Service;
 
@@ -203,21 +204,26 @@ class SNSServiceImpl final : public SNSService::Service {
     if (user_index < 0) {
       c.username = username;
       client_db.push_back(c);
-      c.connected = true;
       reply->set_msg("Login Successful!");
     }
     else {
       Client* user = &client_db[user_index];
       if (user->connected) {
         reply->set_msg("Invalid Username");
-        Status stat = Status(grpc::StatusCode::UNKNOWN, "Invalid Username");
-        return stat;
       }
       else {
         std::string msg = "Welcome Back " + user->username;
         reply->set_msg(msg);
         user->connected = true;
       }
+    }
+
+    if (server_type == "master") {
+      Request m_request;
+      m_request.set_username(username);
+      ClientContext m_context;
+      Reply m_reply;
+      stub_->Login(&m_context, m_request, &m_reply);
     }
     return Status::OK;
   }
@@ -232,7 +238,7 @@ class SNSServiceImpl final : public SNSService::Service {
       c = &client_db[user_index];
 
       //Write the current message to "username.txt"
-      std::string filename = "/" + server_type + "_" + server_id + "/" + username + ".txt";
+      std::string filename = "./" + server_type + "_" + server_id + "/" + username + ".txt";
       std::ofstream user_file(filename, std::ios::app | std::ios::out | std::ios::in);
       google::protobuf::Timestamp temptime = message.timestamp();
       std::string time = google::protobuf::util::TimeUtil::ToString(temptime);
@@ -246,7 +252,7 @@ class SNSServiceImpl final : public SNSService::Service {
           c->stream = stream;
         std::string line;
         std::vector<std::string> newest_twenty;
-        std::ifstream in("/" + server_type + "_" + server_id + "/" + username + "following.txt");
+        std::ifstream in("./" + server_type + "_" + server_id + "/" + username + "following.txt");
         int count = 0;
         //Read the last up-to-20 lines (newest 20 messages) from userfollowing.txt
         while (getline(in, line)) {
@@ -274,19 +280,58 @@ class SNSServiceImpl final : public SNSService::Service {
           temp_client->stream->Write(message);
         //For each of the current user's followers, put the message in their following.txt file
         std::string temp_username = temp_client->username;
-        std::string temp_file = "/" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
+        std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
         std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
         following_file << fileinput;
         temp_client->following_file_size++;
-        std::ofstream user_file("/" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
+        std::ofstream user_file("./" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
         user_file << fileinput;
+      }
+
+      // Update slave
+      if (server_type == "master") {
+        ClientContext m_context;
+        Reply m_reply;
+        Update m_update;
+        m_update.set_username(username);
+        m_update.set_msg(fileinput);
+        stub_->ServerUpdate(&m_context, m_update, &m_reply);
       }
     }
     //If the client disconnected from Chat Mode, set connected to false
     c->connected = false;
-    if (server_type == "master") {
+    return Status::OK;
+  }
 
+  // To update slave server
+  Status ServerUpdate(ServerContext* context, const Update* request, Reply* reply) override {
+    // Get user
+    Client* c;
+    std::string username = request->username();
+    int user_index = find_user(username);
+    c = &client_db[user_index];
+
+    //Write the current message to "username.txt"
+    std::string filename = "./" + server_type + "_" + server_id + "/" + username + ".txt";
+    std::ofstream user_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::string fileinput = request->msg();
+    //"Set Stream" is the default message from the client to initialize the stream
+    user_file << fileinput;
+
+    //Send the message to each follower's stream
+    std::vector<Client*>::const_iterator it;
+    for (it = c->client_followers.begin(); it != c->client_followers.end(); it++) {
+      Client* temp_client = *it;
+      //For each of the current user's followers, put the message in their following.txt file
+      std::string temp_username = temp_client->username;
+      std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
+      std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
+      following_file << fileinput;
+      temp_client->following_file_size++;
+      std::ofstream user_file("./" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
+      user_file << fileinput;
     }
+
     return Status::OK;
   }
 };
