@@ -81,4 +81,5 @@ service Coordinator_Service {
   rpc HeartBeat (Message) returns (Reply) {}
   rpc HandleClient (Request) returns (Reply) {}
   rpc HandleSlave (Request) returns (Reply) {}
+  rpc HandleSynchronizer (Request) returns (Reply) {}
 }

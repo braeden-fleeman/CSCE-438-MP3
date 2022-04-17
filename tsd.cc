@@ -126,6 +126,8 @@ void heartbeat_handler(std::string coord_ip, std::string coord_port, std::string
   }
 }
 
+void ClusterUpdates() {}
+
 
 // TODO: Slave/Master Communication
 // TODO: Update files
@@ -145,7 +147,6 @@ class SNSServiceImpl final : public SNSService::Service {
     return Status::OK;
   }
 
-  // TODO: Update follow to store list of followers in a file
   Status Follow(ServerContext* context, const Request* request, Reply* reply) override {
     std::string username1 = request->username();
     std::string username2 = request->arguments(0);

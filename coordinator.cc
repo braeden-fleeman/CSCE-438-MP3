@@ -125,6 +125,22 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
         return Status::OK;
     }
 
+    Status HandleSynchronizer(ServerContext* context, const Request* request, Reply* reply) override {
+        std::string username = request->username();
+
+        try {
+            int serverIndex = stoi(request->username());
+            reply->set_msg(std::to_string(getSynchronizer(serverIndex)));
+        }
+        catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+            Status stat = Status(grpc::StatusCode::UNKNOWN, "Failure in HandleClient");
+            return stat;
+        }
+
+        return Status::OK;
+    }
+
 };
 
 // Returns port of server 
