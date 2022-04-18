@@ -260,6 +260,9 @@ class SNSServiceImpl final : public SNSService::Service {
     std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
     std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
     std::string out_input = "LOGIN," + username;
+
+    std::cout << "server-type: " << server_type << out_input << std::endl;
+
     out_file << out_input << std::endl;
     out_file.close();
 
@@ -445,6 +448,7 @@ void localTimeline(std::string username1, std::string username2, std::string tim
 // Handle Incoming file updates
 void handleIncomingFileUpdates() {
   while (true) {
+    std::cout << "handling incoming bruh" << std::endl;
     // Check local file for updates from FSs
     std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
     std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
@@ -477,31 +481,6 @@ void handleIncomingFileUpdates() {
   }
 }
 
-
-/*
-      command = line....
-        // Type differentiation
-        if (command == "login") {
-            user = ...
-        }
-        else if (command == "follow") {
-            user1 = ...
-            user2 = ...
-
-        }
-        else if (command == "timeline") {
-            user1 = ...
-            user2 = ...
-            message = ...
-        }
-
-
-*/
-
-
-// Handle outgoing file updates
-
-
 void RunServer(std::string port_no, std::string coord_ip, std::string coord_port) {
 
   std::string server_address = "0.0.0.0:" + port_no;
@@ -515,6 +494,9 @@ void RunServer(std::string port_no, std::string coord_ip, std::string coord_port
   // Dispatch thread to message coordinator with heartbeats
   std::thread server_heartbeat(heartbeat_handler, coord_ip, coord_port, port_no);
   server_heartbeat.detach();
+
+  std::thread file_updater(handleIncomingFileUpdates);
+  file_updater.detach();
 
   std::cout << "Server listening on " << server_address << std::endl;
 
@@ -574,6 +556,10 @@ int main(int argc, char** argv) {
   }
   std::string path = server_type + "_" + server_id;
   int check = mkdir(path.c_str(), 0777);
+  std::ofstream new_file("./" + path + "/incoming.txt", std::ios::trunc | std::ios::out);
+  new_file.close();
+  std::ofstream new_file2("./" + path + "/outgoing.txt", std::ios::trunc | std::ios::out);
+  new_file2.close();
 
   RunServer(server_port, coord_ip, coord_port);
 

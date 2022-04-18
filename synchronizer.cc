@@ -155,6 +155,7 @@ void handleMasterOutgoing() {
     o_mtx.lock();
     std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
 
+
     std::string line;
     while (getline(m_out_file, line)) {
         std::vector<std::string> vect = split(line, ',');
@@ -210,9 +211,10 @@ void handleMasterOutgoing() {
             sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
         }
 
-        o_mtx.lock();
+
     }
     m_out_file.close();
+    o_mtx.unlock();
 }
 
 void handleSlaveOutgoing() {
@@ -277,15 +279,19 @@ void handleSlaveOutgoing() {
             sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
         }
 
-        o_mtx.lock();
+
     }
     m_out_file.close();
+    o_mtx.unlock();
 }
 
 void outgoingUpdater() {
     while (true) {
+        std::cout << "i got outgoing" << std::endl;
         handleMasterOutgoing();
+        std::cout << "--master done" << std::endl;
         handleSlaveOutgoing();
+        std::cout << "--slave done" << std::endl;
         // Clear files
         o_mtx.lock();
         std::ofstream m_file("./master_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
