@@ -73,6 +73,7 @@ message Message {
 message Update {
   string username = 1;
   string msg = 2;
+  // Specify file type affected
   string type = 3;
 }
 
@@ -82,4 +83,10 @@ service Coordinator_Service {
   rpc HandleClient (Request) returns (Reply) {}
   rpc HandleSlave (Request) returns (Reply) {}
   rpc HandleSynchronizer (Request) returns (Reply) {}
+}
+
+// Synchronizer service
+service Synchronizer_Service {
+  // Incoming Updates
+  rpc SyncUpdate (Update) returns (Reply) {}
 }

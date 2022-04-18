@@ -50,6 +50,7 @@ std::map<std::string, google::protobuf::Timestamp> last_heartbeats;
 
 int getServer(int client_id);
 int getSlaveServer(int master_id);
+int getSynchronizer(int client_id);
 void check_heartbeats();
 
 
@@ -154,7 +155,7 @@ int getServer(int client_id) {
     std::cout << "slave table" << std::endl;
     return stoi(slave_table.at(serverID).port);
 }
-int getFollowerSyncer(int client_id) {
+int getSynchronizer(int client_id) {
     int serverID = (client_id % 3) + 1;
     return stoi(synchronizer_table.at(serverID).port);
 }
@@ -190,9 +191,9 @@ void check_heartbeats() {
 
 /*
 DEFAULT PORTS:
-M1: 3010, S1: 3011
-M2: 3012, S2: 3013
-M3: 3014. S3: 3015
+M1: 3010, S1: 3011, FS1:4000
+M2: 3012, S2: 3013, FS2:4001
+M3: 3014. S3: 3015, FS3:4002
 
 C: 6009
 */

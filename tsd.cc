@@ -338,6 +338,28 @@ class SNSServiceImpl final : public SNSService::Service {
 };
 
 
+// Handle Incoming file updates
+/*
+      command = line....
+        // Type differentiation
+        if (command == "login") {
+            user = ...
+        }
+        else if (command == "follow") {
+            user1 = ...
+            user2 = ...
+
+        }
+        else if (command == "timeline") {
+            user1 = ...
+            user2 = ...
+            message = ...
+        }
+
+
+*/
+
+
 void RunServer(std::string port_no, std::string coord_ip, std::string coord_port) {
 
   std::string server_address = "0.0.0.0:" + port_no;
