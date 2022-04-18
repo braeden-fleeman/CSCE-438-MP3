@@ -55,6 +55,8 @@ std::string coord_port = "6009";
 std::string sync_port = "4000";
 std::string sync_id = "-1";
 
+void outgoingUpdater();
+
 /*
  * Splits a string into a vector based on the character given
  */
@@ -140,7 +142,7 @@ void RunServer(std::string port_no) {
 
     // Startup outgoing file manager
     std::thread outgoing_manager(outgoingUpdater);
-    outgoing_mangaer.detach();
+    outgoing_manager.detach();
 
     // Server handles incoming updates
     server->Wait();
@@ -196,7 +198,7 @@ void handleMasterOutgoing() {
             Reply reply;
             coord_stub->HandleSynchronizer(&context, request, &reply);
             std::string port = reply.msg();
-            std::string login_info = "0.0.0.0:" + port;
+            login_info = "0.0.0.0:" + port;
             auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
                 grpc::CreateChannel(
                     login_info, grpc::InsecureChannelCredentials())));
@@ -264,7 +266,7 @@ void handleSlaveOutgoing() {
             Reply reply;
             coord_stub->HandleSynchronizer(&context, request, &reply);
             std::string port = reply.msg();
-            std::string login_info = "0.0.0.0:" + port;
+            login_info = "0.0.0.0:" + port;
             auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
                 grpc::CreateChannel(
                     login_info, grpc::InsecureChannelCredentials())));
@@ -289,7 +291,7 @@ void outgoingUpdater() {
         o_mtx.lock();
         std::ofstream m_file("./master_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
         m_file.close();
-        std::ofstream s_file "./slave_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
+        std::ofstream s_file("./slave_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
         s_file.close();
         o_mtx.unlock();
         sleep(10);
