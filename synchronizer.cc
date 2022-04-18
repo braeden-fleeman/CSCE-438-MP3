@@ -212,7 +212,6 @@ void handleMasterOutgoing() {
 
         o_mtx.lock();
     }
-    // Clear outgoing file
     m_out_file.close();
 }
 

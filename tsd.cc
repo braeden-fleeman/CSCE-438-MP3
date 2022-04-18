@@ -48,6 +48,7 @@
 #include <unistd.h>
 #include <google/protobuf/util/time_util.h>
 #include <grpc++/grpc++.h>
+#include <mutex>
 
 #include "sns.grpc.pb.h"
 
@@ -81,6 +82,28 @@ struct Client {
     return (username == c1.username);
   }
 };
+
+std::mutex mtx;
+
+/*
+ * Splits a string into a vector based on the character given
+ */
+std::vector<std::string> split(std::string line, char separator) {
+  std::vector<std::string> result;
+  while (line.size()) {
+    size_t found = line.find_first_of(separator);
+    if (found != std::string::npos) {
+      std::string part = line.substr(0, found);
+      result.push_back(part);
+      line = line.substr(found + 1);
+    }
+    else {
+      result.push_back(line);
+      break;
+    }
+  }
+  return result;
+}
 
 //Vector that stores every client that has been created
 std::vector<Client> client_db;
@@ -174,6 +197,12 @@ class SNSServiceImpl final : public SNSService::Service {
       Reply m_reply;
       stub_->Follow(&m_context, m_request, &m_reply);
     }
+    // Handle outgoing file update
+    std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
+    std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::string out_input = "FOLLOW," + username1 + "," + username2;
+    out_file << out_input << std::endl;
+    out_file.close();
     return Status::OK;
   }
 
@@ -226,6 +255,14 @@ class SNSServiceImpl final : public SNSService::Service {
       Reply m_reply;
       stub_->Login(&m_context, m_request, &m_reply);
     }
+
+    // Handle outgoing file update
+    std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
+    std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::string out_input = "LOGIN," + username;
+    out_file << out_input << std::endl;
+    out_file.close();
+
     return Status::OK;
   }
 
@@ -279,14 +316,26 @@ class SNSServiceImpl final : public SNSService::Service {
         Client* temp_client = *it;
         if (temp_client->stream != 0 && temp_client->connected)
           temp_client->stream->Write(message);
+
+
         //For each of the current user's followers, put the message in their following.txt file
         std::string temp_username = temp_client->username;
-        std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
-        std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
-        following_file << fileinput;
-        temp_client->following_file_size++;
-        std::ofstream user_file("./" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
-        user_file << fileinput;
+        if (stoi(temp_username) % 3 == stoi(server_id)) {
+          std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
+          std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
+          following_file << fileinput;
+          temp_client->following_file_size++;
+          std::ofstream user_file("./" + server_type + "_" + server_id + "/" + temp_username + ".txt", std::ios::app | std::ios::out | std::ios::in);
+          user_file << fileinput;
+        }
+        else {
+          // Handle outgoing file update
+          std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
+          std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+          std::string out_input = "TIMELINE," + username + "," + temp_username + "," + time + "," + message.msg();
+          out_file << out_input << std::endl;
+          out_file.close();
+        }
       }
 
       // Update slave
@@ -338,7 +387,97 @@ class SNSServiceImpl final : public SNSService::Service {
 };
 
 
+void localLogin(std::string username) {
+  Client c;
+  int user_index = find_user(username);
+  if (user_index < 0) {
+    c.username = username;
+    client_db.push_back(c);
+  }
+  else {
+    Client* user = &client_db[user_index];
+    if (user->connected) {
+      //reply->set_msg("Invalid Username");
+    }
+    else {
+      std::string msg = "Welcome Back " + user->username;
+      user->connected = true;
+    }
+  }
+}
+
+void localFollow(std::string username1, std::string username2) {
+  int join_index = find_user(username2);
+  if (join_index < 0 || username1 == username2)
+    std::cout << "Error in following: " << username2 << std::endl;
+  else {
+    Client* user1 = &client_db[find_user(username1)];
+    Client* user2 = &client_db[join_index];
+    if (std::find(user1->client_following.begin(), user1->client_following.end(), user2) != user1->client_following.end()) {
+      std::cout << "Already following" << std::endl;
+    }
+    user1->client_following.push_back(user2);
+    user2->client_followers.push_back(user1);
+  }
+}
+
+void localTimeline(std::string username1, std::string username2, std::string time, std::string msg) {
+  TimeUtil time_util;
+  Message message;
+  message.set_msg(msg);
+  message.set_username(username1);
+  Timestamp* ts;
+  time_util.FromString(time, ts);
+  message.set_allocated_timestamp(ts);
+  Client* temp_client = &client_db.at(find_user(username2));
+  if (temp_client->stream != 0 && temp_client->connected) {
+    temp_client->stream->Write(message);
+  }
+  std::string fileinput = time + " :: " + username1 + ":" + msg + "\n";
+  std::string temp_file = "./" + server_type + "_" + server_id + "/" + username2 + "following.txt";
+  std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
+  following_file << fileinput;
+  temp_client->following_file_size++;
+  std::ofstream user_file("./" + server_type + "_" + server_id + "/" + username2 + ".txt", std::ios::app | std::ios::out | std::ios::in);
+  user_file << fileinput;
+}
+
 // Handle Incoming file updates
+void handleIncomingFileUpdates() {
+  while (true) {
+    // Check local file for updates from FSs
+    std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
+    std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::string line;
+    while (getline(in_file, line)) {
+      std::vector<std::string> vect = split(line, ',');
+      std::string cmd = vect.at(0);
+      std::string username1 = vect.at(1);
+      if (cmd == "LOGIN") {
+        localLogin(username1);
+      }
+      else if (cmd == "FOLLOW") {
+        std::string username2 = vect.at(2);
+        localFollow(username1, username2);
+      }
+      else if (cmd == "TIMELINE") {
+        std::string username2 = vect.at(2);
+        std::string time = vect.at(3);
+        std::string msg = vect.at(4);
+        localTimeline(username1, username2, time, msg);
+      }
+    }
+    // Clear file
+    mtx.lock();
+    std::ofstream file("./" + server_type + "_" + server_id + "/incoming.txt", std::ios::trunc | std::ios::out);
+    file.close();
+    mtx.unlock();
+    sleep(30);
+
+  }
+}
+
+
 /*
       command = line....
         // Type differentiation
@@ -358,6 +497,9 @@ class SNSServiceImpl final : public SNSService::Service {
 
 
 */
+
+
+// Handle outgoing file updates
 
 
 void RunServer(std::string port_no, std::string coord_ip, std::string coord_port) {

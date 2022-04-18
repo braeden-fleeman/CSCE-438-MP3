@@ -179,7 +179,7 @@ int getServer(int client_id) {
     return stoi(slave_table.at(serverID).port);
 }
 int getSynchronizer(int client_id) {
-    int serverID = (client_id % 3) + 1;
+    int serverID = (client_id % 3);
     return stoi(synchronizer_table.at(serverID).port);
 }
 
