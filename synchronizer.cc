@@ -138,51 +138,162 @@ void RunServer(std::string port_no) {
     message.set_allocated_timestamp(ts);
     Status status = coord_stub->HeartBeat(&context, message, &reply);
 
+    // Startup outgoing file manager
+    std::thread outgoing_manager(outgoingUpdater);
+    outgoing_mangaer.detach();
+
     // Server handles incoming updates
     server->Wait();
 }
 
+void handleMasterOutgoing() {
+    // Handle master outgoing file
+    std::string filename = "./master_" + sync_id + "/outgoing.txt";
 
-void outgoingUpdater() {
-    while (true) {
-        // Handle master outgoing file
-        std::string filename = "./master_" + sync_id + "/outgoing.txt";
+    o_mtx.lock();
+    std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
 
-        o_mtx.lock();
-        std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::string line;
+    while (getline(m_out_file, line)) {
+        std::vector<std::string> vect = split(line, ',');
+        std::string cmd = vect.at(0);
+        std::string from = vect.at(1);
+        if (cmd == "LOGIN") {
+            // Get port list from coord
+            std::string login_info = coord_ip + ":" + coord_port;
+            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext context;
+            Request request;
+            ListPorts port_list;
+            coord_stub->GetAllSynchronizers(&context, request, &port_list);
 
-        std::string line;
-        while (getline(m_out_file, line)) {
-            std::vector<std::string> vect = split(line, ',');
-            std::string cmd = vect.at(0);
-            std::string from = vect.at(1);
-            if (cmd == "LOGIN") {
-                // Get port list from coord
-                std::string login_info = coord_ip + ":" + coord_port;
-                auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+            // Forward to all FSs
+            for (int i = 0; i < port_list.ports_size(); i++) {
+                std::string port = port_list.ports(i);
+                std::string login_info = "0.0.0.0:" + port;
+                auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
                     grpc::CreateChannel(
                         login_info, grpc::InsecureChannelCredentials())));
                 ClientContext context;
-                Request request;
-                ListPorts ports;
-                coord_stub->GetAllSynchronizers(&context, request, &ports);
+                Update update;
+                update.set_msg(line);
+                Reply reply;
 
-                // Forward to all FSs
-
-
+                sync_stub->SyncUpdate(&context, update, &reply);
             }
-            else if (cmd == "FOLLOW") {
-
-            }
-            else if (cmd == "TIMELINE") {
-
-            }
-
-            o_mtx.lock();
-
-            sleep(10);
         }
-        // Clear outgoing file
+        else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
+            std::string user_to = vect.at(2);
+            std::string login_info = coord_ip + ":" + coord_port;
+            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext context;
+            Request request;
+            request.set_username(user_to);
+            Reply reply;
+            coord_stub->HandleSynchronizer(&context, request, &reply);
+            std::string port = reply.msg();
+            std::string login_info = "0.0.0.0:" + port;
+            auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext sync_context;
+            Update update;
+            update.set_msg(line);
+            Reply sync_reply;
+
+            sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
+        }
+
+        o_mtx.lock();
+    }
+    // Clear outgoing file
+    m_out_file.close();
+}
+
+void handleSlaveOutgoing() {
+    // Handle master outgoing file
+    std::string filename = "./slave_" + sync_id + "/outgoing.txt";
+
+    o_mtx.lock();
+    std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+
+    std::string line;
+    while (getline(m_out_file, line)) {
+        std::vector<std::string> vect = split(line, ',');
+        std::string cmd = vect.at(0);
+        std::string from = vect.at(1);
+        if (cmd == "LOGIN") {
+            // Get port list from coord
+            std::string login_info = coord_ip + ":" + coord_port;
+            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext context;
+            Request request;
+            ListPorts port_list;
+            coord_stub->GetAllSynchronizers(&context, request, &port_list);
+
+            // Forward to all FSs
+            for (int i = 0; i < port_list.ports_size(); i++) {
+                std::string port = port_list.ports(i);
+                std::string login_info = "0.0.0.0:" + port;
+                auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
+                    grpc::CreateChannel(
+                        login_info, grpc::InsecureChannelCredentials())));
+                ClientContext context;
+                Update update;
+                update.set_msg(line);
+                Reply reply;
+
+                sync_stub->SyncUpdate(&context, update, &reply);
+            }
+        }
+        else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
+            std::string user_to = vect.at(2);
+            std::string login_info = coord_ip + ":" + coord_port;
+            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext context;
+            Request request;
+            request.set_username(user_to);
+            Reply reply;
+            coord_stub->HandleSynchronizer(&context, request, &reply);
+            std::string port = reply.msg();
+            std::string login_info = "0.0.0.0:" + port;
+            auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
+                grpc::CreateChannel(
+                    login_info, grpc::InsecureChannelCredentials())));
+            ClientContext sync_context;
+            Update update;
+            update.set_msg(line);
+            Reply sync_reply;
+
+            sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
+        }
+
+        o_mtx.lock();
+    }
+    m_out_file.close();
+}
+
+void outgoingUpdater() {
+    while (true) {
+        handleMasterOutgoing();
+        handleSlaveOutgoing();
+        // Clear files
+        o_mtx.lock();
+        std::ofstream m_file("./master_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
+        m_file.close();
+        std::ofstream s_file "./slave_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);
+        s_file.close();
+        o_mtx.unlock();
+        sleep(10);
+
     }
 }
 
