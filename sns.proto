@@ -77,12 +77,17 @@ message Update {
   string type = 3;
 }
 
+message ListPorts {
+  repeated string ports = 1;
+}
+
 // Coordinator service
 service Coordinator_Service {
   rpc HeartBeat (Message) returns (Reply) {}
   rpc HandleClient (Request) returns (Reply) {}
   rpc HandleSlave (Request) returns (Reply) {}
   rpc HandleSynchronizer (Request) returns (Reply) {}
+  rpc GetAllSynchronizers (Request) returns (ListPorts) {}
 }
 
 // Synchronizer service

@@ -25,6 +25,7 @@ using csce438::Message;
 using csce438::Reply;
 using csce438::Request;
 using csce438::SNSService;
+using csce438::ListPorts;
 using google::protobuf::Duration;
 using google::protobuf::Timestamp;
 using grpc::Server;
@@ -81,8 +82,12 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
             if (server_type == "master") {
                 master_table.insert({ serverIndex, server });
             }
-            else {
+            else if (server_type == "slave") {
                 slave_table.insert({ serverIndex, server });
+            }
+            // FS
+            else {
+                synchronizer_table.insert({ serverIndex, server });
             }
         }
         else {
@@ -136,6 +141,24 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
         catch (const std::exception& e) {
             std::cout << e.what() << std::endl;
             Status stat = Status(grpc::StatusCode::UNKNOWN, "Failure in HandleClient");
+            return stat;
+        }
+
+        return Status::OK;
+    }
+
+    Status GetAllSynchronizers(ServerContext* context, const Request* request, ListPorts* list_reply) override {
+        std::string username = request->username();
+
+        try {
+            for (std::map<int, Server_Entry>::iterator it = synchronizer_table.begin(); it != synchronizer_table.end(); ++it) {
+                list_reply->add_ports(it->second.port);
+            }
+
+        }
+        catch (const std::exception& e) {
+            std::cout << e.what() << std::endl;
+            Status stat = Status(grpc::StatusCode::UNKNOWN, "Failure in GetAllSyncs");
             return stat;
         }
 
