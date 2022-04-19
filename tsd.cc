@@ -323,7 +323,7 @@ class SNSServiceImpl final : public SNSService::Service {
 
         //For each of the current user's followers, put the message in their following.txt file
         std::string temp_username = temp_client->username;
-        if (stoi(temp_username) % 3 == stoi(server_id)) {
+        if ((stoi(temp_username) % 3) + 1 == stoi(server_id)) {
           std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
           std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
           following_file << fileinput;
