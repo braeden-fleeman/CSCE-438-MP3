@@ -92,6 +92,7 @@ class SyncServiceImpl final : public Synchronizer_Service::Service {
         if (!m_file.is_open()) {
             std::cout << "Error opening file: " << filename << std::endl;
         }
+        std::cout << "file open: " << filename << std::endl;
 
         m_file << msg << std::endl;
         m_file.close();
@@ -107,11 +108,14 @@ class SyncServiceImpl final : public Synchronizer_Service::Service {
         if (!s_file.is_open()) {
             std::cout << "Error opening file: " << filename << std::endl;
         }
+        std::cout << "file open: " << filename << std::endl;
         s_file << msg << std::endl;
         s_file.close();
 
         // Unlock
         mtx.unlock();
+
+        return Status::OK;
     }
 };
 
@@ -158,11 +162,15 @@ void handleMasterOutgoing() {
 
     std::string line;
     while (getline(m_out_file, line)) {
+        std::cout << "line: " << line << std::endl;
         std::vector<std::string> vect = split(line, ',');
+
+        std::cout << "size vect: " << vect.size() << std::endl;
         std::string cmd = vect.at(0);
         std::string from = vect.at(1);
         if (cmd == "LOGIN") {
             // Get port list from coord
+            std::cout << "--1--" << std::endl;
             std::string login_info = coord_ip + ":" + coord_port;
             auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
                 grpc::CreateChannel(
@@ -171,10 +179,15 @@ void handleMasterOutgoing() {
             Request request;
             ListPorts port_list;
             coord_stub->GetAllSynchronizers(&context, request, &port_list);
-
+            std::cout << "--2--" << std::endl;
             // Forward to all FSs
             for (int i = 0; i < port_list.ports_size(); i++) {
                 std::string port = port_list.ports(i);
+                std::cout << "--port: " << port << std::endl;
+                if (port == sync_port) {
+                    std::cout << "this me, gon continue" << std::endl;
+                    continue;
+                }
                 std::string login_info = "0.0.0.0:" + port;
                 auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
                     grpc::CreateChannel(
@@ -186,6 +199,7 @@ void handleMasterOutgoing() {
 
                 sync_stub->SyncUpdate(&context, update, &reply);
             }
+            std::cout << "--3--" << std::endl;
         }
         else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
             std::string user_to = vect.at(2);

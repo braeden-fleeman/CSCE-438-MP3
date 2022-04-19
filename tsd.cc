@@ -410,6 +410,7 @@ void localLogin(std::string username) {
 }
 
 void localFollow(std::string username1, std::string username2) {
+  std::cout << "u1: " << username1 << " | u2: " << username2 << std::endl;
   int join_index = find_user(username2);
   if (join_index < 0 || username1 == username2)
     std::cout << "Error in following: " << username2 << std::endl;
@@ -418,6 +419,7 @@ void localFollow(std::string username1, std::string username2) {
     Client* user2 = &client_db[join_index];
     if (std::find(user1->client_following.begin(), user1->client_following.end(), user2) != user1->client_following.end()) {
       std::cout << "Already following" << std::endl;
+      return;
     }
     user1->client_following.push_back(user2);
     user2->client_followers.push_back(user1);
@@ -448,7 +450,7 @@ void localTimeline(std::string username1, std::string username2, std::string tim
 // Handle Incoming file updates
 void handleIncomingFileUpdates() {
   while (true) {
-    std::cout << "handling incoming bruh" << std::endl;
+    //std::cout << "handling incoming bruh" << std::endl;
     // Check local file for updates from FSs
     std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
     std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
