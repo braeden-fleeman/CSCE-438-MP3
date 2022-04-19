@@ -67,7 +67,7 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
 
         // Store time
         if (last_heartbeats.find(username) == last_heartbeats.end()) {
-            std::cout << "creating table for port: " << request->msg() << std::endl;
+
             // Put server in heartbeat table
             last_heartbeats.insert({ username, temptime });
 
@@ -76,6 +76,7 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
             int underscorePos = request->username().find("_");
             std::string server_type = request->username().substr(0, underscorePos);
             int serverIndex = stoi(request->username().substr(underscorePos + 1));
+            std::cout << "creating table for port: " << request->msg() << "with ID: " << serverIndex - 1 << std::endl;
             server.isActive = true;
             server.server_ID = serverIndex;
             server.port = request->msg();
@@ -103,6 +104,7 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
         try {
             int userID = stoi(username);
             int server_port = getServer(userID);
+            std::cout << "server_port: " << server_port << std::endl;
             reply->set_msg(std::to_string(server_port));
 
         }
@@ -169,7 +171,8 @@ class CoordServiceImpl final : public Coordinator_Service::Service {
 
 // Returns port of server 
 int getServer(int client_id) {
-    int serverID = (client_id % 3);
+    int serverID = (client_id % 3) + 1;
+    std::cout << "IN GetServer:: serverID: " << serverID << std::endl;
     if (master_table.at(serverID).isActive) {
         std::cout << "master table" << std::endl;
         return stoi(master_table.at(serverID).port);
@@ -179,7 +182,7 @@ int getServer(int client_id) {
     return stoi(slave_table.at(serverID).port);
 }
 int getSynchronizer(int client_id) {
-    int serverID = (client_id % 3);
+    int serverID = (client_id % 3) + 1;
     return stoi(synchronizer_table.at(serverID).port);
 }
 
