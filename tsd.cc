@@ -426,16 +426,22 @@ void localFollow(std::string username1, std::string username2) {
   }
 }
 
-void localTimeline(std::string username1, std::string username2, std::string time, std::string msg) {
+void localTimeline(std::string username1, std::string username2, const std::string time, std::string msg) {
   TimeUtil time_util;
   Message message;
   message.set_msg(msg);
   message.set_username(username1);
-  Timestamp* ts;
+  std::cout << "--lt-0" << std::endl;
+  Timestamp* ts = new Timestamp;
+  std::cout << "time: " << time << std::endl;
   time_util.FromString(time, ts);
+  std::cout << "--lt-1" << std::endl;
   message.set_allocated_timestamp(ts);
-  Client* temp_client = &client_db.at(find_user(username2));
+  std::cout << "find user: " << find_user(username2) << std::endl;
+  Client* temp_client = &client_db[find_user(username2)];
+
   if (temp_client->stream != 0 && temp_client->connected) {
+    std::cout << "msg: " << message.msg() << std::endl;
     temp_client->stream->Write(message);
   }
   std::string fileinput = time + " :: " + username1 + ":" + msg + "\n";
@@ -445,6 +451,9 @@ void localTimeline(std::string username1, std::string username2, std::string tim
   temp_client->following_file_size++;
   std::ofstream user_file("./" + server_type + "_" + server_id + "/" + username2 + ".txt", std::ios::app | std::ios::out | std::ios::in);
   user_file << fileinput;
+
+  following_file.close();
+  user_file.close();
 }
 
 // Handle Incoming file updates
@@ -454,8 +463,12 @@ void handleIncomingFileUpdates() {
     // Check local file for updates from FSs
     std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
     std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
+    std::cout << "file opened" << std::endl;
     std::string line;
     while (getline(in_file, line)) {
+      if (line.empty()) {
+        break;
+      }
       std::vector<std::string> vect = split(line, ',');
       std::string cmd = vect.at(0);
       std::string username1 = vect.at(1);
@@ -467,19 +480,22 @@ void handleIncomingFileUpdates() {
         localFollow(username1, username2);
       }
       else if (cmd == "TIMELINE") {
+        std::cout << "TIMELINE requested" << std::endl;
         std::string username2 = vect.at(2);
-        std::string time = vect.at(3);
+        const std::string time = vect.at(3);
         std::string msg = vect.at(4);
+        std::cout << "variables gotten" << std::endl;
         localTimeline(username1, username2, time, msg);
       }
     }
+    in_file.close();
     // Clear file
     mtx.lock();
     std::ofstream file("./" + server_type + "_" + server_id + "/incoming.txt", std::ios::trunc | std::ios::out);
     file.close();
+    std::cout << "FILE reset" << std::endl;
     mtx.unlock();
     sleep(30);
-
   }
 }
 

@@ -152,9 +152,9 @@ void RunServer(std::string port_no) {
     server->Wait();
 }
 
-void handleMasterOutgoing() {
+void handleOutgoing(std::string pathType) {
     // Handle master outgoing file
-    std::string filename = "./master_" + sync_id + "/outgoing.txt";
+    std::string filename = "./" + pathType + "_" + sync_id + "/outgoing.txt";
 
     o_mtx.lock();
     std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
@@ -162,6 +162,9 @@ void handleMasterOutgoing() {
 
     std::string line;
     while (getline(m_out_file, line)) {
+        if (line.empty()) {
+            break;
+        }
         std::cout << "line: " << line << std::endl;
         std::vector<std::string> vect = split(line, ',');
 
@@ -170,7 +173,7 @@ void handleMasterOutgoing() {
         std::string from = vect.at(1);
         if (cmd == "LOGIN") {
             // Get port list from coord
-            std::cout << "--1--" << std::endl;
+            //std::cout << "--1--" << std::endl;
             std::string login_info = coord_ip + ":" + coord_port;
             auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
                 grpc::CreateChannel(
@@ -179,7 +182,7 @@ void handleMasterOutgoing() {
             Request request;
             ListPorts port_list;
             coord_stub->GetAllSynchronizers(&context, request, &port_list);
-            std::cout << "--2--" << std::endl;
+            //std::cout << "--2--" << std::endl;
             // Forward to all FSs
             for (int i = 0; i < port_list.ports_size(); i++) {
                 std::string port = port_list.ports(i);
@@ -199,7 +202,7 @@ void handleMasterOutgoing() {
 
                 sync_stub->SyncUpdate(&context, update, &reply);
             }
-            std::cout << "--3--" << std::endl;
+            //std::cout << "--3--" << std::endl;
         }
         else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
             std::string user_to = vect.at(2);
@@ -231,80 +234,80 @@ void handleMasterOutgoing() {
     o_mtx.unlock();
 }
 
-void handleSlaveOutgoing() {
-    // Handle master outgoing file
-    std::string filename = "./slave_" + sync_id + "/outgoing.txt";
+// void handleSlaveOutgoing() {
+//     // Handle master outgoing file
+//     std::string filename = "./slave_" + sync_id + "/outgoing.txt";
 
-    o_mtx.lock();
-    std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
+//     o_mtx.lock();
+//     std::ifstream m_out_file(filename, std::ios::app | std::ios::out | std::ios::in);
 
-    std::string line;
-    while (getline(m_out_file, line)) {
-        std::vector<std::string> vect = split(line, ',');
-        std::string cmd = vect.at(0);
-        std::string from = vect.at(1);
-        if (cmd == "LOGIN") {
-            // Get port list from coord
-            std::string login_info = coord_ip + ":" + coord_port;
-            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
-                grpc::CreateChannel(
-                    login_info, grpc::InsecureChannelCredentials())));
-            ClientContext context;
-            Request request;
-            ListPorts port_list;
-            coord_stub->GetAllSynchronizers(&context, request, &port_list);
+//     std::string line;
+//     while (getline(m_out_file, line)) {
+//         std::vector<std::string> vect = split(line, ',');
+//         std::string cmd = vect.at(0);
+//         std::string from = vect.at(1);
+//         if (cmd == "LOGIN") {
+//             // Get port list from coord
+//             std::string login_info = coord_ip + ":" + coord_port;
+//             auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+//                 grpc::CreateChannel(
+//                     login_info, grpc::InsecureChannelCredentials())));
+//             ClientContext context;
+//             Request request;
+//             ListPorts port_list;
+//             coord_stub->GetAllSynchronizers(&context, request, &port_list);
 
-            // Forward to all FSs
-            for (int i = 0; i < port_list.ports_size(); i++) {
-                std::string port = port_list.ports(i);
-                std::string login_info = "0.0.0.0:" + port;
-                auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
-                    grpc::CreateChannel(
-                        login_info, grpc::InsecureChannelCredentials())));
-                ClientContext context;
-                Update update;
-                update.set_msg(line);
-                Reply reply;
+//             // Forward to all FSs
+//             for (int i = 0; i < port_list.ports_size(); i++) {
+//                 std::string port = port_list.ports(i);
+//                 std::string login_info = "0.0.0.0:" + port;
+//                 auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
+//                     grpc::CreateChannel(
+//                         login_info, grpc::InsecureChannelCredentials())));
+//                 ClientContext context;
+//                 Update update;
+//                 update.set_msg(line);
+//                 Reply reply;
 
-                sync_stub->SyncUpdate(&context, update, &reply);
-            }
-        }
-        else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
-            std::string user_to = vect.at(2);
-            std::string login_info = coord_ip + ":" + coord_port;
-            auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
-                grpc::CreateChannel(
-                    login_info, grpc::InsecureChannelCredentials())));
-            ClientContext context;
-            Request request;
-            request.set_username(user_to);
-            Reply reply;
-            coord_stub->HandleSynchronizer(&context, request, &reply);
-            std::string port = reply.msg();
-            login_info = "0.0.0.0:" + port;
-            auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
-                grpc::CreateChannel(
-                    login_info, grpc::InsecureChannelCredentials())));
-            ClientContext sync_context;
-            Update update;
-            update.set_msg(line);
-            Reply sync_reply;
+//                 sync_stub->SyncUpdate(&context, update, &reply);
+//             }
+//         }
+//         else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
+//             std::string user_to = vect.at(2);
+//             std::string login_info = coord_ip + ":" + coord_port;
+//             auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
+//                 grpc::CreateChannel(
+//                     login_info, grpc::InsecureChannelCredentials())));
+//             ClientContext context;
+//             Request request;
+//             request.set_username(user_to);
+//             Reply reply;
+//             coord_stub->HandleSynchronizer(&context, request, &reply);
+//             std::string port = reply.msg();
+//             login_info = "0.0.0.0:" + port;
+//             auto sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
+//                 grpc::CreateChannel(
+//                     login_info, grpc::InsecureChannelCredentials())));
+//             ClientContext sync_context;
+//             Update update;
+//             update.set_msg(line);
+//             Reply sync_reply;
 
-            sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
-        }
+//             sync_stub->SyncUpdate(&sync_context, update, &sync_reply);
+//         }
 
 
-    }
-    m_out_file.close();
-    o_mtx.unlock();
-}
+//     }
+//     m_out_file.close();
+//     o_mtx.unlock();
+// }
 
 void outgoingUpdater() {
     while (true) {
         std::cout << "i got outgoing" << std::endl;
-        handleMasterOutgoing();
+        handleOutgoing("master");
         std::cout << "--master done" << std::endl;
-        handleSlaveOutgoing();
+        handleOutgoing("slave");
         std::cout << "--slave done" << std::endl;
         // Clear files
         o_mtx.lock();
