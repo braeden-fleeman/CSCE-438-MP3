@@ -84,6 +84,8 @@ struct Client {
 };
 
 std::mutex mtx;
+std::mutex o_mtx;
+
 
 /*
  * Splits a string into a vector based on the character given
@@ -151,9 +153,6 @@ void heartbeat_handler(std::string coord_ip, std::string coord_port, std::string
 
 void ClusterUpdates() {}
 
-
-// TODO: Slave/Master Communication
-// TODO: Update files
 
 class SNSServiceImpl final : public SNSService::Service {
 
@@ -285,12 +284,13 @@ class SNSServiceImpl final : public SNSService::Service {
       std::string time = google::protobuf::util::TimeUtil::ToString(temptime);
       std::string fileinput = time + " :: " + message.username() + ":" + message.msg() + "\n";
       //"Set Stream" is the default message from the client to initialize the stream
+      if (c->stream == 0)
+        c->stream = stream;
+
       if (message.msg() != "Set Stream")
         user_file << fileinput;
       //If message = "Set Stream", print the first 20 chats from the people you follow
       else {
-        if (c->stream == 0)
-          c->stream = stream;
         std::string line;
         std::vector<std::string> newest_twenty;
         std::ifstream in("./" + server_type + "_" + server_id + "/" + username + "following.txt");
@@ -317,13 +317,15 @@ class SNSServiceImpl final : public SNSService::Service {
       std::vector<Client*>::const_iterator it;
       for (it = c->client_followers.begin(); it != c->client_followers.end(); it++) {
         Client* temp_client = *it;
-        if (temp_client->stream != 0 && temp_client->connected)
+        std::cout << "to user: " << temp_client->username << std::endl;
+        if (temp_client->stream != 0 && temp_client->connected) {
+          std::cout << "sending to that user" << std::endl;
           temp_client->stream->Write(message);
-
+        }
 
         //For each of the current user's followers, put the message in their following.txt file
         std::string temp_username = temp_client->username;
-        if ((stoi(temp_username) % 3) + 1 == stoi(server_id)) {
+        if (((stoi(temp_username) - 1) % 3) + 1 == stoi(server_id)) {
           std::string temp_file = "./" + server_type + "_" + server_id + "/" + temp_username + "following.txt";
           std::ofstream following_file(temp_file, std::ios::app | std::ios::out | std::ios::in);
           following_file << fileinput;
@@ -332,12 +334,17 @@ class SNSServiceImpl final : public SNSService::Service {
           user_file << fileinput;
         }
         else {
+          o_mtx.lock();
           // Handle outgoing file update
+          std::cout << "this is going to another cluster!" << std::endl;
           std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
+          std::cout << "filename: " << filename << std::endl;
           std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
           std::string out_input = "TIMELINE," + username + "," + temp_username + "," + time + "," + message.msg();
-          out_file << out_input << std::endl;
+          std::cout << "out_input: " << out_input << std::endl;
+          out_file << out_input; //<< std::endl;
           out_file.close();
+          o_mtx.unlock();
         }
       }
 
@@ -389,7 +396,6 @@ class SNSServiceImpl final : public SNSService::Service {
   }
 };
 
-
 void localLogin(std::string username) {
   Client c;
   int user_index = find_user(username);
@@ -431,17 +437,14 @@ void localTimeline(std::string username1, std::string username2, const std::stri
   Message message;
   message.set_msg(msg);
   message.set_username(username1);
-  std::cout << "--lt-0" << std::endl;
   Timestamp* ts = new Timestamp;
-  std::cout << "time: " << time << std::endl;
   time_util.FromString(time, ts);
-  std::cout << "--lt-1" << std::endl;
   message.set_allocated_timestamp(ts);
-  std::cout << "find user: " << find_user(username2) << std::endl;
+  std::cout << "find_user(" << username2 << std::endl;
   Client* temp_client = &client_db[find_user(username2)];
 
   if (temp_client->stream != 0 && temp_client->connected) {
-    std::cout << "msg: " << message.msg() << std::endl;
+    std::cout << "writing to client: " << message.msg() << std::endl;
     temp_client->stream->Write(message);
   }
   std::string fileinput = time + " :: " + username1 + ":" + msg + "\n";
@@ -463,12 +466,15 @@ void handleIncomingFileUpdates() {
     // Check local file for updates from FSs
     std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
     std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
-    std::cout << "file opened" << std::endl;
+    //std::cout << "file opened" << std::endl;
     std::string line;
+
     while (getline(in_file, line)) {
+      std::cout << "--line: " << line << std::endl;
       if (line.empty()) {
         break;
       }
+
       std::vector<std::string> vect = split(line, ',');
       std::string cmd = vect.at(0);
       std::string username1 = vect.at(1);
@@ -493,7 +499,7 @@ void handleIncomingFileUpdates() {
     mtx.lock();
     std::ofstream file("./" + server_type + "_" + server_id + "/incoming.txt", std::ios::trunc | std::ios::out);
     file.close();
-    std::cout << "FILE reset" << std::endl;
+    //std::cout << "FILE reset" << std::endl;
     mtx.unlock();
     sleep(30);
   }
