@@ -92,7 +92,6 @@ class SyncServiceImpl final : public Synchronizer_Service::Service {
         if (!m_file.is_open()) {
             std::cout << "Error opening file: " << filename << std::endl;
         }
-        std::cout << "file open: " << filename << std::endl;
 
         m_file << msg << std::endl;
         m_file.close();
@@ -108,7 +107,6 @@ class SyncServiceImpl final : public Synchronizer_Service::Service {
         if (!s_file.is_open()) {
             std::cout << "Error opening file: " << filename << std::endl;
         }
-        std::cout << "file open: " << filename << std::endl;
         s_file << msg << std::endl;
         s_file.close();
 
@@ -127,7 +125,6 @@ void RunServer(std::string port_no) {
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
     std::unique_ptr<Server> server(builder.BuildAndStart());
-    std::cout << "Synchronizer listening on " << server_address << std::endl;
 
     // Send heartbeat to initialize in coordinator
     std::string login_info = coord_ip + ":" + coord_port;
@@ -163,7 +160,6 @@ void handleOutgoing(std::string pathType) {
         if (line.empty()) {
             break;
         }
-        std::cout << "SYNC) LINE: " << line << std::endl;
         std::vector<std::string> vect = split(line, ',');
 
         std::string cmd = vect.at(0);
@@ -198,7 +194,6 @@ void handleOutgoing(std::string pathType) {
         }
         else if (cmd == "FOLLOW" || cmd == "TIMELINE") {
             std::string user_to = vect.at(2);
-            std::cout << "user_to: " << user_to << std::endl;
             std::string login_info = coord_ip + ":" + coord_port;
             auto coord_stub = std::unique_ptr<Coordinator_Service::Stub>(Coordinator_Service::NewStub(
                 grpc::CreateChannel(
@@ -209,7 +204,7 @@ void handleOutgoing(std::string pathType) {
             Reply reply;
             coord_stub->HandleSynchronizer(&context, request, &reply);
             std::string port = reply.msg();
-            std::cout << "port from: " << sync_port << ", for " << cmd << " to port : " << port << std::endl;
+            //std::cout << "port from: " << sync_port << ", for " << cmd << " to port : " << port << std::endl;
             login_info = "0.0.0.0:" + port;
             std::unique_ptr<Synchronizer_Service::Stub>  sync_stub = std::unique_ptr<Synchronizer_Service::Stub>(Synchronizer_Service::NewStub(
                 grpc::CreateChannel(
@@ -230,11 +225,9 @@ void handleOutgoing(std::string pathType) {
 
 void outgoingUpdater() {
     while (true) {
-        //std::cout << "i got outgoing" << std::endl;
         handleOutgoing("master");
-        //std::cout << "--master done" << std::endl;
         handleOutgoing("slave");
-        //std::cout << "--slave done" << std::endl;
+
         // Clear files
         o_mtx.lock();
         std::ofstream m_file("./master_" + sync_id + "/outgoing.txt", std::ios::trunc | std::ios::out);

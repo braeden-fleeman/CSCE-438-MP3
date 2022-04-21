@@ -1,0 +1,39 @@
+#!/bin/bash
+
+<<COMMENT
+Usage: $: bash startup-script
+
+If the command above (after $:) doesn't work,
+please check your current working directory.
+The following commands may help:
+
+pwd
+ls
+which bash
+
+align "which bash" result with the HashBang (#!) in line 1.
+
+COMMENT
+
+echo "startup script initiated."
+gnome-terminal -- ./coordinator -p 6009
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9001 -u 1 -t slave
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9000 -u 1 -t master
+
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9002 -u 2 -t slave
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9003 -u 2 -t master
+
+
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9004 -u 3 -t slave
+gnome-terminal -- ./tsd -h localhost -p 6009 -s 9005 -u 3 -t master
+
+gnome-terminal -- ./synchronizer -h localhost -p 6009 -s 9100 -u 1
+gnome-terminal -- ./synchronizer -h localhost -p 6009 -s 9200 -u 2
+gnome-terminal -- ./synchronizer -h localhost -p 6009 -s 9300 -u 3
+
+gnome-terminal -- ./tsc -h localhost -u 1 -p 6009
+gnome-terminal -- ./tsc -h localhost -u 2 -p 6009
+gnome-terminal -- ./tsc -h localhost -u 3 -p 6009
+gnome-terminal -- ./tsc -h localhost -u 4 -p 6009
+gnome-terminal -- ./tsc -h localhost -u 5 -p 6009
+gnome-terminal -- ./tsc -h localhost -u 6 -p 6009

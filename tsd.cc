@@ -260,8 +260,6 @@ class SNSServiceImpl final : public SNSService::Service {
     std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
     std::string out_input = "LOGIN," + username;
 
-    std::cout << "server-type: " << server_type << out_input << std::endl;
-
     out_file << out_input << std::endl;
     out_file.close();
 
@@ -317,9 +315,7 @@ class SNSServiceImpl final : public SNSService::Service {
       std::vector<Client*>::const_iterator it;
       for (it = c->client_followers.begin(); it != c->client_followers.end(); it++) {
         Client* temp_client = *it;
-        std::cout << "to user: " << temp_client->username << std::endl;
         if (temp_client->stream != 0 && temp_client->connected) {
-          std::cout << "sending to that user" << std::endl;
           temp_client->stream->Write(message);
         }
 
@@ -336,13 +332,10 @@ class SNSServiceImpl final : public SNSService::Service {
         else {
           o_mtx.lock();
           // Handle outgoing file update
-          std::cout << "this is going to another cluster!" << std::endl;
           std::string filename = "./" + server_type + "_" + server_id + "/outgoing.txt";
-          std::cout << "filename: " << filename << std::endl;
           std::ofstream out_file(filename, std::ios::app | std::ios::out | std::ios::in);
           std::string out_input = "TIMELINE," + username + "," + temp_username + "," + time + "," + message.msg();
-          std::cout << "out_input: " << out_input << std::endl;
-          out_file << out_input; //<< std::endl;
+          out_file << out_input; //<< std::endl; BIG ISSUE IF KEPT
           out_file.close();
           o_mtx.unlock();
         }
@@ -416,7 +409,6 @@ void localLogin(std::string username) {
 }
 
 void localFollow(std::string username1, std::string username2) {
-  std::cout << "u1: " << username1 << " | u2: " << username2 << std::endl;
   int join_index = find_user(username2);
   if (join_index < 0 || username1 == username2)
     std::cout << "Error in following: " << username2 << std::endl;
@@ -424,7 +416,6 @@ void localFollow(std::string username1, std::string username2) {
     Client* user1 = &client_db[find_user(username1)];
     Client* user2 = &client_db[join_index];
     if (std::find(user1->client_following.begin(), user1->client_following.end(), user2) != user1->client_following.end()) {
-      std::cout << "Already following" << std::endl;
       return;
     }
     user1->client_following.push_back(user2);
@@ -440,11 +431,9 @@ void localTimeline(std::string username1, std::string username2, const std::stri
   Timestamp* ts = new Timestamp;
   time_util.FromString(time, ts);
   message.set_allocated_timestamp(ts);
-  std::cout << "find_user(" << username2 << std::endl;
   Client* temp_client = &client_db[find_user(username2)];
 
   if (temp_client->stream != 0 && temp_client->connected) {
-    std::cout << "writing to client: " << message.msg() << std::endl;
     temp_client->stream->Write(message);
   }
   std::string fileinput = time + " :: " + username1 + ":" + msg + "\n";
@@ -462,15 +451,12 @@ void localTimeline(std::string username1, std::string username2, const std::stri
 // Handle Incoming file updates
 void handleIncomingFileUpdates() {
   while (true) {
-    //std::cout << "handling incoming bruh" << std::endl;
     // Check local file for updates from FSs
     std::string filename = "./" + server_type + "_" + server_id + "/incoming.txt";
     std::ifstream in_file(filename, std::ios::app | std::ios::out | std::ios::in);
-    //std::cout << "file opened" << std::endl;
     std::string line;
 
     while (getline(in_file, line)) {
-      std::cout << "--line: " << line << std::endl;
       if (line.empty()) {
         break;
       }
@@ -486,11 +472,9 @@ void handleIncomingFileUpdates() {
         localFollow(username1, username2);
       }
       else if (cmd == "TIMELINE") {
-        std::cout << "TIMELINE requested" << std::endl;
         std::string username2 = vect.at(2);
         const std::string time = vect.at(3);
         std::string msg = vect.at(4);
-        std::cout << "variables gotten" << std::endl;
         localTimeline(username1, username2, time, msg);
       }
     }
@@ -499,7 +483,6 @@ void handleIncomingFileUpdates() {
     mtx.lock();
     std::ofstream file("./" + server_type + "_" + server_id + "/incoming.txt", std::ios::trunc | std::ios::out);
     file.close();
-    //std::cout << "FILE reset" << std::endl;
     mtx.unlock();
     sleep(30);
   }
